@@ -8,7 +8,8 @@ import math
 
 
 def rollouts(states):
-    '''Execute trajectories in environment, return joint configs'''
+    '''Execute trajectories in environment, return joint configs for a few hundred states
+    (pass in states_count to PoWER() accordingly'''
     return states
 
 
