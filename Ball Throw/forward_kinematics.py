@@ -2,7 +2,7 @@ import sys
 import numpy as np
 from math import sin, cos, radians
 
-num_links = 7
+num_links = 5
 def Translate(x, y, z):
   return np.array([
     [1, 0, 0, x],

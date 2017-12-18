@@ -2,6 +2,7 @@
 import numpy as np
 from forward_kinematics import get_rotations
 import math
+from environment import BallGame
 links = 7
 global base_state
 base_state = np.concatenate([np.zeros([links], dtype='float') ,np.zeros([8], dtype='float')])
@@ -62,12 +63,15 @@ def getAngle(a, b):
     ad = b[0] - a[0]
     return math.degrees(math.atan(opp/ad)) 
 def main():
-    a1=[1,1,1,1,1,1,1]
+    a1=[1,1,0,1,1]
     a2 =  [1 for i in range(links)]# #[1,1,1,1,1,1,1,0]
     a3=[1,0,0,0,0,0,0,0]
-    make_action(a1)
-    make_action(a1)
-    make_action(a1)
+    game = BallGame()
+    game.new_episode()
+    print(game.get_state()[:5])
+    game.make_action(a1)
+    print(game.get_state()[:5])
+    print(a1)
     #make_action(a1)
 
 if __name__ == '__main__':

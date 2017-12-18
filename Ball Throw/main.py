@@ -14,16 +14,18 @@ from keras.optimizers import RMSprop
 #from time import sleep
 from tqdm import trange, tqdm
 from environment import BallGame
+from keras.callbacks import TensorBoard
+from matplotlib import pyplot as plt
 
 
 # neural network variables
 learning_rate = 25e-5
 epochs = 100
-batch_size = 256                     # 256 seems optimal for my 2 gig GPU
+batch_size = 128                     # 256 seems optimal for my 2 gig GPU
 memory_size = 20000                 # number of entries to store in it's memory. Seems rather low, could increase it as we proceed
-discount_factor = 0.90
+discount_factor = 0.95
 collection_per_epoch = 1000
-testing_per_epoch = 10
+testing_per_epoch = 5
 save_model = True
 save_interval = 10000                # number of training episodes after which the model is saved to the disk. I use a lowe number since my gPU is slow and I usually quit prematurely
 load_model = True
@@ -37,58 +39,72 @@ train_data_bool = False
 test_data_bool = False
 train_and_collect = False
 # other functional variables
-jarvis_config = "jarvis.cfg"
+jarvis_config = "game.cfg"
 num_links = 6
 trained_data = 0
 
+tensorboard = TensorBoard(log_dir="Graph/")
 
 def initialize_game():
     print("Initializing Robot Engine.....")
     # add basic unity init stuff here for root
-    '''
-    game = DoomGame()
-    print "Loading config file {0}".format(config_file_path)
-    game.load_config(config_file_path)
-    print "config file loaded successfully...."
-    game.set_window_visible(True)
-    game.set_mode(Mode.PLAYER)
-    game.set_screen_format(ScreenFormat.GRAY8)
-    game.set_screen_resolution(ScreenResolution.RES_640X480)
-    game.init()
-    print "Doom Engine initialized"
-    '''
     game = BallGame()
     return game
 
 
 def initialze_model(num_output, num_input):
-    print("Initializing JARVIS....")
-    ''' trying to follow the deep mind structure.
-        - Layer 1: Dense,             Activation = Relu,   output = 32, strides = 4, Kernal size 8x8
-        - Layer 2: Dense,             Activation = Relu,   output = 64, strides = 2, Kernal size 4x4
-        - Layer 3: Dense,             Activation = Relu,   output = 64, strides = 1, Kernal size 3x3
-        - Layer 5: Fully Conencted/Dense,   Activation = Relu,   output = 512,
-        - Layer 6: Fully Conencted/Dense,   Activation = Linear, output = (1x1xnum_actions)
-    '''
+    print("Initializing Model....")
 
     model = Sequential()
 
-    model.add(Dense(units=128, activation='relu', input_shape=num_input, bias_initializer=keras.initializers.Constant(0.1)))
-    model.add(Dense(units=256, activation='relu', bias_initializer=keras.initializers.Constant(0.1)))
-    model.add(Conv1D(64,3, activation='relu'))
-    model.add(MaxPooling1D(pool_size=2))
-    model.add(LSTM(128, activation='relu', recurrent_activation='hard_sigmoid', use_bias=True, kernel_initializer='glorot_uniform', recurrent_initializer='orthogonal', bias_initializer='zeros', unit_forget_bias=True, kernel_regularizer=None, recurrent_regularizer=None, bias_regularizer=None, activity_regularizer=None, kernel_constraint=None, recurrent_constraint=None, bias_constraint=None, dropout=0.0, recurrent_dropout=0.0, implementation=1, return_sequences=False, return_state=False, go_backwards=False, stateful=False, unroll=False))
-    model.add(Dense(units=512, activation='relu', bias_initializer=keras.initializers.Constant(0.1)))
+    model.add(Dense(units=128, activation='relu', input_shape=num_input, bias_initializer=keras.initializers.Constant(0.01)))
+    model.add(Dense(units=256, activation='relu', bias_initializer=keras.initializers.Constant(0.01)))
+    #model.add(Conv1D(64,3, activation='relu'))
+    #model.add(MaxPooling1D(pool_size=2))
+    #model.add(LSTM(128, activation='relu', use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='ones', unit_forget_bias=True, kernel_regularizer=None, recurrent_regularizer=None, bias_regularizer=None, activity_regularizer=None, kernel_constraint=None, recurrent_constraint=None, bias_constraint=None, dropout=0.0, recurrent_dropout=0.0, implementation=1, return_sequences=False, return_state=False, go_backwards=True, unroll=False))
+    model.add(Dense(units=256, activation='relu', bias_initializer=keras.initializers.Constant(0.01)))
     
     #model.add(Dense(units=64, activation='relu', bias_initializer=keras.initializers.Constant(0.1)))
-    #model.add(Flatten())
-    model.add(Dense(units=num_output, activation='relu', bias_initializer=keras.initializers.Constant(0.1)))
+    model.add(Flatten())
+    model.add(Dense(units=num_output, activation='linear', bias_initializer=keras.initializers.Constant(0.01)))
     
     #model.add(Dense(units=2, activation='linear', bias_initializer=keras.initializers.Constant(0.1)))
     #model.add(Reshape([8, 2]))
     rms_optimizer = RMSprop(lr=learning_rate)
+    sgd = keras.optimizers.SGD(lr=learning_rate, momentum=0.5, decay=0.001, nesterov=True)
+    adam = keras.optimizers.Adam(lr=learning_rate, beta_1=0.9, beta_2=0.995, epsilon=1e-8)
     model.compile(loss='mse',
-                  optimizer=rms_optimizer, metrics=['acc'])
+                  optimizer=adam, metrics=['acc'])
+    '''
+    model = Sequential()
+    model.add(Dense(units=128, activation='relu', input_shape=num_input, bias_initializer=keras.initializers.Constant(0.01)))
+    model.add(Dense(units=256, activation='tanh', bias_initializer=keras.initializers.Constant(0.01)))
+    model.add(Dense(units=256, activation='linear', bias_initializer=keras.initializers.Constant(0.01)))
+    model.add(Dense(units=128, activation='relu', bias_initializer=keras.initializers.Constant(0.01)))
+    model.add(Flatten())
+    model.add(Dense(units=num_output, activation='tanh', bias_initializer=keras.initializers.Constant(0.01)))
+    
+
+
+    model.add(Dense(units=128, activation='linear', input_shape=num_input, bias_initializer=keras.initializers.Constant(0.1)))
+    model.add(Dense(units=256, activation='linear', bias_initializer=keras.initializers.Constant(0.1)))
+    model.add(Conv1D(64,3, activation='linear'))
+    model.add(MaxPooling1D(pool_size=5))
+    #model.add(LSTM(128, activation='linear', recurrent_activation='tanh', use_bias=True, kernel_initializer='glorot_uniform', recurrent_initializer='orthogonal', bias_initializer='zeros', unit_forget_bias=True, kernel_regularizer=None, recurrent_regularizer=None, bias_regularizer=None, activity_regularizer=None, kernel_constraint=None, recurrent_constraint=None, bias_constraint=None, dropout=0.0, recurrent_dropout=0.0, implementation=1, return_sequences=False, return_state=False, go_backwards=False, stateful=False, unroll=False))
+    #model.add(LSTM(128))
+    #model.add(Dense(units=256, activation='tanh', bias_initializer=keras.initializers.Constant(0.1)))
+    
+    model.add(Dense(units=128, activation='linear', bias_initializer=keras.initializers.Constant(0.1)))
+    model.add(Flatten())
+    model.add(Dense(units=num_output, activation='linear', bias_initializer=keras.initializers.Constant(0.1)))
+    
+    #model.add(Dense(units=2, activation='linear', bias_initializer=keras.initializers.Constant(0.1)))
+    #model.add(Reshape([8, 2]))
+    '''
+    #rms_optimizer = RMSprop(lr=learning_rate)
+    #sgd = keras.optimizers.SGD(lr=learning_rate, momentum=0.9, decay=0.0, nesterov=True)
+    #model.compile(loss='mae',
+    #              optimizer='adam', metrics=['mae', 'acc'])
 
     #if load_model:
     #    print("Loading weights....")
@@ -119,11 +135,11 @@ def get_random_action():
     return randint(0, len(actions)-1)
 
 
-def collect_data(game, model, epoch=1):
+def collect_data(game, model, epoch):
     def exploration_rate(epoch):
         """# Define exploration rate change over time"""
         start_eps = 1.0
-        end_eps = 0.1
+        end_eps = 0.10
         const_eps_epochs = 0.1 * epochs  # 10% of learning time
         eps_decay_epochs = 0.6 * epochs  # 60% of learning time
 
@@ -135,34 +151,44 @@ def collect_data(game, model, epoch=1):
                                (eps_decay_epochs - const_eps_epochs) * (start_eps - end_eps)
         else:
             return end_eps
+    game.new_episode()
 
-    state1 = game.get_state()
-    action = 0
-    if random() <= exploration_rate(epoch):  # or training_episodes_finished < observe_episodes:
-        action = get_random_action()  # make a completly random action
-    else:
-        action = get_action(state1)[0]  # np.argmax(model.predict(image, batch_size=1),1) # get the best out of the prediction
-    reward, _ = game.make_action(actions[action])
-    state2 = game.get_state()
+    reward = 0
+    while not game.is_episode_finished():
 
-    memory.append([state1, action, reward, state2])  # here we use the image to describe state. we can add other parameters later as well!
-    
+        state1 = game.get_state()
+        action = 0
+        if random() <= exploration_rate(epoch):  # or training_episodes_finished < observe_episodes:
+            action = get_random_action()  # make a completly random action
+        else:
+            action = get_action(state1)[0]  # np.argmax(model.predict(image, batch_size=1),1) # get the best out of the prediction
+        reward = game.make_action(actions[action], epoch)
+        state2 = game.get_state()
+        is_terminal = game.is_episode_finished()
+        #temp_mem.append([state1, action, reward, state2, is_terminal])
+        memory.append([state1, action, reward, state2, is_terminal])  # here we use the image to describe state. we can add other parameters later as well!
+    #temp_mem = np.array(temp_mem)
+    #temp_mem[:,2] = reward
+    #for mem in temp_mem:
+    #    memory.append(mem)
     if len(memory) > memory_size:
         memory.pop(0)  # if we exceed, remove old memories
 
 
 def train_model(game, model, memory):
-    while len(memory) < batch_size:
-        collect_data(game, model)
+    batch_len = batch_size
+    #if len(memory) < batch_size:
+    #    #collect_data(game, model)
+    #    batch_len=len(memory)
 
-    batch = sample(memory, batch_size)
+    batch = sample(memory, batch_len)
     # s1, a, r, s2 = batch
     # print(batch)
     s1 = np.array([i[0] for i in batch])
     a = np.array([i[1] for i in batch])
     r = np.array([i[2] for i in batch])
     s2 = np.array([i[3] for i in batch])
-
+    terminal = np.array([i[4] for i in batch])
     q1 = get_q_values(s1)
     q2 = np.max(get_q_values(s2), axis=1)
 
@@ -171,29 +197,36 @@ def train_model(game, model, memory):
     #print r.shape
     #print q2.shape
     #if(r > 0.5):
-    q1[np.arange(q1.shape[0]), a] += r + discount_factor * q2  # * is_discounted  # Update q value with Bellman's equation if we have positive reward, otherwise just add reward
+    q1[np.arange(q1.shape[0]), a] = r + (discount_factor * q2)  # * is_discounted  # Update q value with Bellman's equation if we have positive reward, otherwise just add reward
     #else:
     #    q1[np.arange(q1.shape[0]), a] = r + discount_factor * q2 - 100
     #for i in range(s1_Q.shape[0]):
     #    s1_Q[i]
     s1 = s1.reshape([s1.shape[0], -1, 1])
-    model.fit(s1, q1, batch_size=batch_size, epochs=20, verbose=0)
+    model.fit(s1, q1, batch_size=batch_len, epochs=3, verbose=0, callbacks=[tensorboard])
     return batch_size  # to keep track of how many memories we have trained upon
 
 
-def test_model(game, model):
+def test_model(game, model, epoch):
     test_phase_rewards = []
     #tqdm.write("Testing Model....")
-    for episode in range(5):
+    for episode in range(1):
         game.new_episode()
         # tqdm.write("Episode {0}....".format(episode+1))
         reward = 123
+        call = 1
+        print("====================")
         while not game.is_episode_finished():
+            print("call %s" % call)
             state = game.get_state()
             index = get_action(state)[0]  # get the best out of the prediction
-            reward, y = game.make_action(actions[index])
-            if reward == 0:
-                print(y)
+            action = actions[index]
+            
+            #print(action)
+            #print(model.predict(state.reshape([1,15,1]), batch_size=1, verbose=0))
+            reward = game.make_action(action, epoch, print_output = True)
+            call+=1
+        print("====================\n")
         test_phase_rewards.append( reward ) #game.get_total_reward())
     return test_phase_rewards
 
@@ -237,36 +270,26 @@ game = initialize_game()
 global num_actions
 num_actions = game.get_num_actions()
 global actions
-actions = np.array([list(a) for a in it.product([0, 1], repeat=8)])
+actions = np.array([list(a) for a in it.product([0, 1], repeat=num_actions)])
+#actions = np.array([ [1,1,1,1,1,1,1,1], [1,1,1,1,1,1,1,0], [0,0,0,0,0,0,0,1], [0,0,0,0,0,0,0,0], [1,0,1,0,1,0,1,1], [1,0,1,0,1,0,1,0] ])
 #actions = sample(actions, 63)
 #actions.append([1,1,1,1,1,1,1,1])
-model = initialze_model(len(actions), (15,1))
+model = initialze_model(len(actions), (num_actions*2,1))
 model.summary()
+#tensorboard = keras.callbacks.TensorBoard(log_dir='Graph', histogram_freq=0,  
+#          write_graph=True, write_images=True)
+#tensorboard.set_model(model)
 
-def final_train(game, model, memory):
-    s1 = np.array([i[0] for i in memory])
-    a = np.array([i[1] for i in memory])
-    r = np.array([i[2] for i in memory])
-    s2 = np.array([i[3] for i in memory])
-    print(s1)
-    s1_Q = get_q_values(s1)
-    q2 = np.max(get_q_values(s2), axis=1)
-    # is_discounted = np.array((r>0), dtype=np.int32).reshape(len(batch),)
-    #print s1_Q.shape
-    #print r.shape
-    #print q2.shape
-    s1_Q[np.arange(s1_Q.shape[0]), a] = r + discount_factor * q2  # * is_discounted  # Update q value with Bellman's equation if we have positive reward, otherwise just add reward
-    #for i in range(s1_Q.shape[0]):
-    #    s1_Q[i]
-    model.fit(s1, s1_Q, batch_size=batch_size, epochs=10, verbose=1)
 
 
 current_episode = 0
+
+global_rewards = []
 for epoch in range(epochs):
     #print("\n=============================\nEpoch {0}....\n=============================\n".format(epoch + 1))
     print("Episode: %d" % (current_episode))
    
-    global_rewards = []
+    
 
     
     #tqdm.write("\tStarting learning episode")
@@ -280,14 +303,15 @@ for epoch in range(epochs):
         #print("\tSaving model {0}".format(model_savefile_location))
         # model.save_weights(model_savefile_location, overwrite=True)
     current_episode += 1
-    total_rewards = np.array(test_model(game, model))
-
-    print("Max reward {0}, Min reward: {1}, Mean reward {2}\n".format(total_rewards.max(), total_rewards.min(), total_rewards.mean()))
+    rewards = np.array(test_model(game, model, epoch))
+    global_rewards.append(rewards.mean())
+    print("Mean reward for trial {0}, Total Mean reward: {1}\n".format(rewards.mean(), np.array(global_rewards).mean()))
 
 
     
 
-
+plt.plot(range(len(global_rewards)), global_rewards)
+plt.show()
 #final_train(game, model, memory)
 game.new_episode()
 state = game.get_state()
