@@ -32,7 +32,7 @@ def get_rotations(lengths, angles):
             #elif True:
             #    positions[j] = np.dot(np.dot(Translate( lengths[k],0, 0), rotation[1](q[k])), positions[j])
             #else:
-            positions[j] = np.dot(np.dot(Translate( -lengths[k], 0 ,0), rotation[2](q[k])), positions[j])
+            positions[j] = np.dot(np.dot(Translate( -lengths[k], 0, 0), rotation[2](q[k])), positions[j])
 
 
     return np.array(positions)[:,:3]
