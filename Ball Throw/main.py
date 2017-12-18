@@ -242,8 +242,10 @@ parser.add_argument("-te", action="store_true", help="if you want to test your m
 parser.add_argument("-l", action="store_true", help="if you want to load a previously saved model")
 parser.add_argument("-e", help="number of epochs")
 parser.add_argument("-tac", action="store_true", help="if you want to perform training and collection at the same time")
+parser.add_argument("-power", help="run power algorithm", action="store_true")
 args = parser.parse_args(args=None, namespace=None)
 
+run_power = False
 if args.c:
     collect_data_bool = True
     print("Data collection enabled")
@@ -261,6 +263,8 @@ if args.e:
     epochs = int(args.e)
 if args.tac:
     train_and_collect = True
+if args.power:
+    run_power = True
 # add support for other arguments later. Like config file attributes and neural network parameters
 
 ''' END Arument Parsing'''
@@ -285,35 +289,41 @@ model.summary()
 current_episode = 0
 
 global_rewards = []
-for epoch in range(epochs):
-    #print("\n=============================\nEpoch {0}....\n=============================\n".format(epoch + 1))
-    print("Episode: %d" % (current_episode))
-   
+if(not run_power):
+    for epoch in range(epochs):
+        #print("\n=============================\nEpoch {0}....\n=============================\n".format(epoch + 1))
+        print("Episode: %d" % (current_episode))
     
+        
 
-    
-    #tqdm.write("\tStarting learning episode")
-    game.new_episode()
-    for i in range(collection_per_epoch):
-        collect_data(game, model, epoch)
-    train_model(game, model, memory)
-    if game.is_episode_finished():
+        
+        #tqdm.write("\tStarting learning episode")
         game.new_episode()
-    #if current_episode % int(collection_per_epoch / 2) == 0:
-        #print("\tSaving model {0}".format(model_savefile_location))
-        # model.save_weights(model_savefile_location, overwrite=True)
-    current_episode += 1
-    rewards = np.array(test_model(game, model, epoch))
-    global_rewards.append(rewards.mean())
-    print("Mean reward for trial {0}, Total Mean reward: {1}\n".format(rewards.mean(), np.array(global_rewards).mean()))
+        for i in range(collection_per_epoch):
+            collect_data(game, model, epoch)
+        train_model(game, model, memory)
+        if game.is_episode_finished():
+            game.new_episode()
+        #if current_episode % int(collection_per_epoch / 2) == 0:
+            #print("\tSaving model {0}".format(model_savefile_location))
+            # model.save_weights(model_savefile_location, overwrite=True)
+        current_episode += 1
+        rewards = np.array(test_model(game, model, epoch))
+        global_rewards.append(rewards.mean())
+        print("Mean reward for trial {0}, Total Mean reward: {1}\n".format(rewards.mean(), np.array(global_rewards).mean()))
 
 
-    
+        
 
-plt.plot(range(len(global_rewards)), global_rewards)
-plt.show()
-#final_train(game, model, memory)
-game.new_episode()
-state = game.get_state()
-a = get_action(state)
-print(actions[a])
+    plt.plot(range(len(global_rewards)), global_rewards)
+    plt.show()
+    #final_train(game, model, memory)
+    game.new_episode()
+    state = game.get_state()
+    a = get_action(state)
+    print(actions[a])
+    pass
+else:
+    from power import PoWER
+    theta, eps, final_rewards, errors = PoWER(15, 256)
+    print("theta: %s eps: %s final_rewards: %s errors: %s " % (theta, eps, final_rewards, errors))

@@ -36,7 +36,7 @@ class BallGame:
     sucessful and the ball passed through the hoop or not. If it is 
     unsucessful, finds out how far the ball was from the hoop
     '''
-    def make_action(self, action, epoch, print_output = False):
+    def make_action(self, action, epoch=1, print_output = False):
         self.time+=1
         if(self.time>=self.game_length):
             self.episode_finished = True

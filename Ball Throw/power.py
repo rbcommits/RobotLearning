@@ -19,7 +19,7 @@ def kl_divergence(new_path_dist, weighted_path_dist):
 '''
 
 
-def PoWER(states_count, action_count):
+def PoWER(states_count=15, action_count=256):
 
     def RBF(s, c):
         return np.sum(exp(-2 * (s - c)**2), axis=0)/float(s.shape[0])   # feature vector
@@ -44,8 +44,12 @@ def PoWER(states_count, action_count):
 
     '''Perform rollouts to get centers (joint config samples)'''
     ''' For finite horizons of length T, defined in BallGame() or until ball is released '''
-    centers = np.asarray([], dtype=float)
-    while centers.shape[0] < states_count:
+    centers = [] #np.asarray([], dtype=float)
+    print((np.array(centers)).shape[0])
+    print(len(centers) < states_count)
+    test = (len(centers) < states_count)
+    while len(centers).shape[0] < states_count:
+        print("a")
         while not game.is_episode_finished():
             phi = np.ones(states_count)     # Initially, the feature vector is RBF(0) = 1 everywhere
             action = np.dot(theta, phi)
@@ -103,11 +107,3 @@ def PoWER(states_count, action_count):
     np.save("errors", errors)
 
     return theta, eps, final_rewards, errors
-
-
-
-
-
-
-
-
