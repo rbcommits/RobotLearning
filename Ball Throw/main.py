@@ -12,7 +12,7 @@ from keras.layers.core import Dense, Activation, Reshape, Flatten
 from keras.layers import Conv1D, MaxPooling1D, LSTM
 from keras.optimizers import RMSprop
 #from time import sleep
-from tqdm import trange, tqdm
+# from tqdm import trange, tqdm
 from environment import BallGame
 from keras.callbacks import TensorBoard
 from matplotlib import pyplot as plt
@@ -325,5 +325,5 @@ if(not run_power):
     pass
 else:
     from power import PoWER
-    theta, eps, final_rewards, errors = PoWER(15, 256)
+    theta, eps, final_rewards, errors = PoWER(12, 256)
     print("theta: %s eps: %s final_rewards: %s errors: %s " % (theta, eps, final_rewards, errors))

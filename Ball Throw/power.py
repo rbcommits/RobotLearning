@@ -19,7 +19,7 @@ def kl_divergence(new_path_dist, weighted_path_dist):
 '''
 
 
-def PoWER(states_count=15, action_count=256):
+def PoWER(states_count=12, action_count=256):
 
     def RBF(s, c):
         return np.sum(np.exp(-2 * (s - c)**2), axis=0)/float(s.shape[0])   # feature vector
@@ -30,7 +30,9 @@ def PoWER(states_count=15, action_count=256):
     # The initial state (joint angles in degrees), last one is release (1) or don't release (0)
     # Looks like: state = [0., 0., 0., 0., 0., 0., 0]
     current_state = game.get_state()
+    print(current_state)
     states = np.tile(current_state, (states_count, 1))
+
 
     '''Initialize other stuff'''
     sigma = 1.0   # I chose this arbitrarily
@@ -61,31 +63,31 @@ def PoWER(states_count=15, action_count=256):
        '''
     '''Execute trajectories in a while loop'''
     error = 1000
-    final_rewards = np.asarray([])
+    final_rewards = []
     errors = []
-    trajectory_counter = 0
     while error > 0.001:
 
         game.new_episode()
-        episode_rewards = np.asarray([])
+        episode_rewards = []
         ''' Calculate feature vector using centers '''
         phi = RBF(states, centers)
 
+        t = 0
         while not game.is_episode_finished():
             action = np.dot(theta, phi)
             reward = game.make_action(action)
-            episode_rewards = episode_rewards.append(reward)
+            episode_rewards.append(reward)
             current_state = game.get_state()
+            t += 1
 
-        states[trajectory_counter] = current_state
+        states = np.tile(current_state, (states_count, 1))
 
         '''Adjust dimensions of noise according to reward '''
         # padding = eps[trajectory_counter].shape - episode_rewards.shape
-        epsilon = eps[trajectory_counter]
-        if episode_rewards.shape != eps[trajectory_counter].shape:
-            epsilon = eps[trajectory_counter][:episode_rewards.shape]
+        epsilon = eps[t]
+        if len(episode_rewards) != eps[t].shape:
+            epsilon = eps[t][:len(episode_rewards)]
 
-        trajectory_counter += 1
 
         ''' Unbiased estimate, Q-hat '''
         Q = np.sum(episode_rewards)
@@ -102,7 +104,9 @@ def PoWER(states_count=15, action_count=256):
         errors.append(error)
         final_rewards.append(max(episode_rewards))
 
+
     np.save("final_rewards", final_rewards)
     np.save("errors", errors)
+    print(final_rewards)
 
     return theta, eps, final_rewards, errors
